@@ -1,1 +1,60 @@
 
+name: Build ROMA BOUTIQUE APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "roma_boutique_engranaje_ajustes(1).zip"
+      - ".github/workflows/build-apk.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Prepare web app
+        run: |
+          mkdir -p www
+          unzip -o "roma_boutique_engranaje_ajustes(1).zip" -d extracted
+          cp -R extracted/roma_boutique/. www/
+          test -f www/index.html
+
+      - name: Create Capacitor Android project
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/android
+          npm install --save-dev @capacitor/cli
+          npx cap init "ROMA BOUTIQUE" "com.romaboutique.app" --web-dir=www
+          npx cap add android
+          npx cap sync android
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ROMA-BOUTIQUE-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
