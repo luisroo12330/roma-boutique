@@ -1,5 +1,4 @@
-
-name: Build ROMA BOUTIQUE APK
+name: Build ROMA APK
 
 on:
   workflow_dispatch:
@@ -35,18 +34,21 @@ jobs:
 
       - name: Prepare web app
         run: |
-          mkdir -p www
+          mkdir -p www assets
           unzip -o "roma_boutique_engranaje_ajustes(1).zip" -d extracted
           cp -R extracted/roma_boutique/. www/
           test -f www/index.html
+          cp www/icon-roma.png assets/icon-only.png
+          cp www/icon-roma.png assets/splash.png
 
       - name: Create Capacitor Android project
         run: |
           npm init -y
-          npm install @capacitor/core @capacitor/android
-          npm install --save-dev @capacitor/cli
-          npx cap init "ROMA BOUTIQUE" "com.romaboutique.app" --web-dir=www
+          npm install @capacitor/core @capacitor/android @capacitor/status-bar
+          npm install --save-dev @capacitor/cli @capacitor/assets
+          npx cap init "ROMA" "com.romaboutique.app" --web-dir=www
           npx cap add android
+          npx capacitor-assets generate --android
           npx cap sync android
 
       - name: Build debug APK
@@ -58,7 +60,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ROMA-BOUTIQUE-APK
+          name: ROMA-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-
+          
