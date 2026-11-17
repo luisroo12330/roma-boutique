@@ -74,6 +74,15 @@ jobs:
           npx esbuild www/drive-bridge-entry.js --bundle --platform=browser --format=iife --outfile=www/drive-bridge.js
           npx cap sync android
 
+      - name: Apply ROMA original icon to Android launcher
+        run: |
+          test -d extracted/roma_boutique/android-icon-resources
+          test -d android/app/src/main/res
+          cp -R extracted/roma_boutique/android-icon-resources/. android/app/src/main/res/
+          test -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          test -f android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+          test -f android/app/src/main/res/drawable-nodpi/roma_launcher_art.png
+
       - name: Set monotonically increasing Android versionCode
         env:
           BUILD_NUMBER: ${{ github.run_number }}
@@ -133,4 +142,3 @@ jobs:
           name: ROMA-APK
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-          
