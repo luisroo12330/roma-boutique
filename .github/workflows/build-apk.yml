@@ -1,11 +1,10 @@
-
 name: Build ROMA APK
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - "roma_boutique_engranaje_ajustes(1).zip"
+      - "roma_boutique_drive.zip"
       - ".github/workflows/build-apk.yml"
 
 permissions:
@@ -39,17 +38,18 @@ jobs:
       - name: Prepare web app
         run: |
           mkdir -p www assets
-          unzip -o "roma_boutique_engranaje_ajustes(1).zip" -d extracted
+          unzip -o "roma_boutique_drive.zip" -d extracted
           cp -R extracted/roma_boutique/. www/
           test -f www/index.html
+          test -f www/drive-bridge-entry.js
           cp www/icon-roma.png assets/icon-only.png
           cp www/icon-roma.png assets/splash.png
 
       - name: Create Capacitor Android project
         run: |
           npm init -y
-          npm install @capacitor/core @capacitor/android @capacitor/status-bar @capacitor/local-notifications
-          npm install --save-dev @capacitor/cli @capacitor/assets
+          npm install @capacitor/core @capacitor/android @capacitor/status-bar @capacitor/local-notifications @capawesome/capacitor-google-sign-in
+          npm install --save-dev @capacitor/cli @capacitor/assets esbuild
           npx cap init "ROMA" "com.romaboutique.app" --web-dir=www
           npx cap add android
           python3 - <<'PY'
@@ -62,6 +62,7 @@ jobs:
           manifest.write_text(data)
           PY
           npx capacitor-assets generate --android
+          npx esbuild www/drive-bridge-entry.js --bundle --platform=browser --format=iife --outfile=www/drive-bridge.js
           npx cap sync android
 
       - name: Set monotonically increasing Android versionCode
