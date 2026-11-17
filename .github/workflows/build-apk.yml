@@ -51,6 +51,15 @@ jobs:
           npm install @capacitor/core @capacitor/android @capacitor/status-bar @capacitor/local-notifications @capawesome/capacitor-google-sign-in
           npm install --save-dev @capacitor/cli @capacitor/assets esbuild
           npx cap init "ROMA" "com.romaboutique.app" --web-dir=www
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          config_path = Path("capacitor.config.json")
+          config = json.loads(config_path.read_text())
+          config.setdefault("plugins", {}).setdefault("CapacitorHttp", {})["enabled"] = True
+          config_path.write_text(json.dumps(config, indent=2) + "\n")
+          print("CapacitorHttp habilitado para consultas HTTPS nativas")
+          PY
           npx cap add android
           python3 - <<'PY'
           from pathlib import Path
