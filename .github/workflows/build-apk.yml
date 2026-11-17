@@ -1,3 +1,4 @@
+
 name: Build ROMA APK
 
 on:
@@ -6,6 +7,9 @@ on:
     paths:
       - "roma_boutique_engranaje_ajustes(1).zip"
       - ".github/workflows/build-apk.yml"
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -60,15 +64,56 @@ jobs:
           npx capacitor-assets generate --android
           npx cap sync android
 
-      - name: Build debug APK
+      - name: Set monotonically increasing Android versionCode
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
         run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          candidates = [Path("android/app/build.gradle"), Path("android/app/build.gradle.kts")]
+          gradle = next((p for p in candidates if p.exists()), None)
+          if gradle is None:
+              raise SystemExit("No se encontró el archivo Gradle de la aplicación")
+          data = gradle.read_text()
+          pattern = r'(?m)^(\s*versionCode\s*=?\s*)\d+(\s*(?://.*)?$)'
+          updated, count = re.subn(
+              pattern,
+              lambda m: m.group(1) + 'Integer.parseInt(System.getenv("BUILD_NUMBER") ?: "1")' + m.group(2),
+              data,
+              count=1
+          )
+          if count != 1:
+              raise SystemExit("No se pudo actualizar versionCode automáticamente")
+          gradle.write_text(updated)
+          print("versionCode actualizado:", os.environ["BUILD_NUMBER"])
+          PY
 
-      - name: Upload APK
+      - name: Decode permanent ROMA signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64"
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/roma-release.jks
+          test -s android/app/roma-release.jks
+
+      - name: Build signed release APK
+        working-directory: android
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon \
+            -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/android/app/roma-release.jks" \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD"
+
+      - name: Upload signed ROMA APK
         uses: actions/upload-artifact@v4
         with:
           name: ROMA-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
